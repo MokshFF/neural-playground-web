@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI, Type } from '@google/genai';
+import { PRESET_CONCEPTS } from './src/data/presetConcepts.js';
 
 dotenv.config();
 
@@ -27,196 +28,142 @@ const ai = new GoogleGenAI({
 
 // Helper for fallback concept if API key is absent or error occurs
 function getFallbackConcept(topic: string) {
-  const normalized = topic.toLowerCase();
+  const clean = topic.trim().toLowerCase();
   
-  if (normalized.includes('transform') || normalized.includes('attention')) {
-    return {
-      concept: "Transformers & Self-Attention",
-      tagline: "The architecture powering ChatGPT, Gemini, and modern generative AI",
-      category: "Deep Learning & NLP",
-      simpleExplanation: "Imagine reading a mystery novel. When you read the word 'he', your mind instantly looks back across the previous sentences to connect who 'he' refers to. In older AI models (like RNNs), words were processed strictly one-by-one like a conveyor belt, frequently forgetting the beginning of a paragraph. The Transformer processes all words simultaneously and uses 'Self-Attention'—a dynamic scoring system where every single word assigns attention weights to every other word to understand context instantly.",
-      underTheHood: "Transformers convert input tokens into three vectors: Query (Q), Key (K), and Value (V). The attention score is computed using the scaled dot-product formula: Attention(Q, K, V) = softmax(Q·K^T / √d_k) · V. Multi-Head Attention repeats this calculation multiple times across different projection subspaces, enabling the network to jointly attend to information from different representation subspaces (e.g. grammar, sentiment, pronouns) at different positions.",
-      realWorldExample: {
-        title: "Translating Ambiguous Sentences in Real-Time",
-        story: "Consider the sentence: 'The animal didn't cross the street because it was too tired.' If you change 'tired' to 'wide', the meaning of 'it' flips completely from the animal to the street. Older recurrent models often mistranslated this. Transformers compute attention weights directly between 'it' and 'animal' (when 'tired') or 'it' and 'street' (when 'wide'), capturing human-level nuance.",
-        analogy: "Like a conference call where everyone speaks at once, but each attendee wears smart acoustic headphones that turn up the volume of the exact participants most relevant to what they are working on."
-      },
-      simulatorType: "attention",
-      keyTakeaways: [
-        "Eliminates sequential processing bottlenecks, allowing massive parallel training on modern GPUs.",
-        "Self-attention calculates dynamic pairwise relationships between every token in a context window.",
-        "Forms the backbone of GPT, Gemini, BERT, Vision Transformers (ViT), and diffusion text encoders."
-      ],
-      quiz: [
-        {
-          id: 1,
-          question: "What is the primary advantage of Transformers over traditional Recurrent Neural Networks (RNNs)?",
-          options: [
-            "Transformers require far fewer training parameters",
-            "Transformers process tokens simultaneously in parallel rather than sequentially",
-            "Transformers do not use any matrix multiplication",
-            "Transformers can only work on images rather than text"
-          ],
-          correctIndex: 1,
-          explanation: "Unlike RNNs which must process word 1 before word 2, Transformers ingest the entire sequence at once, allowing massive GPU parallelism and preventing gradient degradation over long sequences."
-        },
-        {
-          id: 2,
-          question: "In the self-attention formula Attention(Q, K, V) = softmax(QK^T / √d_k)V, what is the role of √d_k?",
-          options: [
-            "It rounds the attention scores to integers",
-            "It reverses the negative weights to positive",
-            "It scales down the dot product magnitudes to prevent softmax gradients from vanishing",
-            "It measures the total number of words in the vocabulary"
-          ],
-          correctIndex: 2,
-          explanation: "For large key dimensions (d_k), dot products grow large in magnitude, pushing the softmax function into regions with tiny gradients. Dividing by √d_k stabilizes the gradients."
-        },
-        {
-          id: 3,
-          question: "What do Query, Key, and Value represent conceptually in self-attention?",
-          options: [
-            "Query is what you are looking for; Key is the label/address; Value is the actual content retrieved",
-            "Query is the loss function; Key is the weight; Value is the activation",
-            "Query is the hardware GPU; Key is the memory cache; Value is the clock speed",
-            "Query is the user password; Key is encryption; Value is decrypted text"
-          ],
-          correctIndex: 0,
-          explanation: "Similar to a database or retrieval system, a Query represents what the current token seeks, Keys are tags for all tokens, and the dot-product similarity determines how much of each Value is mixed into the output."
-        }
-      ],
-      suggestedQuestions: [
-        "How does Multi-Head Attention differ from Single-Head Attention?",
-        "Why do Transformers need Positional Encoding?",
-        "What is the quadratic complexity problem in Transformers, and how do modern models solve it?"
-      ]
-    };
+  // 1. Check exact or partial match in PRESET_CONCEPTS
+  const match = PRESET_CONCEPTS.find(c => {
+    const name = c.concept.toLowerCase();
+    return name === clean || name.includes(clean) || clean.includes(name) || c.category.toLowerCase().includes(clean);
+  });
+  if (match) return match;
+
+  // 2. Acronyms & AI aliases dictionary
+  const AI_ALIASES: Record<string, string> = {
+    'backprop': 'Backpropagation & The Chain Rule',
+    'backpropagation': 'Backpropagation & The Chain Rule',
+    'chain rule': 'Backpropagation & The Chain Rule',
+    'transformer': 'Transformers & Multi-Head Self-Attention',
+    'transformers': 'Transformers & Multi-Head Self-Attention',
+    'self attention': 'Transformers & Multi-Head Self-Attention',
+    'attention': 'Transformers & Multi-Head Self-Attention',
+    'llm': 'Transformers & Multi-Head Self-Attention',
+    'llms': 'Transformers & Multi-Head Self-Attention',
+    'diffusion': 'Diffusion Models & Denoising Score Matching',
+    'diffusion models': 'Diffusion Models & Denoising Score Matching',
+    'stable diffusion': 'Diffusion Models & Denoising Score Matching',
+    'midjourney': 'Diffusion Models & Denoising Score Matching',
+    'sora': 'Diffusion Models & Denoising Score Matching',
+    'rag': 'Retrieval-Augmented Generation (RAG) & Vector Embeddings',
+    'vector database': 'Retrieval-Augmented Generation (RAG) & Vector Embeddings',
+    'vector search': 'Retrieval-Augmented Generation (RAG) & Vector Embeddings',
+    'embeddings': 'Retrieval-Augmented Generation (RAG) & Vector Embeddings',
+    'rlhf': 'Reinforcement Learning from Human Feedback (RLHF) & PPO',
+    'ppo': 'Reinforcement Learning from Human Feedback (RLHF) & PPO',
+    'dpo': 'Reinforcement Learning from Human Feedback (RLHF) & PPO',
+    'alignment': 'Reinforcement Learning from Human Feedback (RLHF) & PPO',
+    'moe': 'Mixture of Experts (MoE) & Sparse Routing',
+    'mixture of experts': 'Mixture of Experts (MoE) & Sparse Routing',
+    'deepseek': 'Mixture of Experts (MoE) & Sparse Routing',
+    'mixtral': 'Mixture of Experts (MoE) & Sparse Routing',
+    'lora': 'Low-Rank Adaptation (LoRA) & PEFT',
+    'peft': 'Low-Rank Adaptation (LoRA) & PEFT',
+    'qlora': 'Low-Rank Adaptation (LoRA) & PEFT',
+    'fine tuning': 'Low-Rank Adaptation (LoRA) & PEFT',
+    'cnn': 'Convolutional Neural Networks (CNNs) & Feature Extraction',
+    'cnns': 'Convolutional Neural Networks (CNNs) & Feature Extraction',
+    'resnet': 'Residual Networks (ResNet) & Skip Connections',
+    'skip connections': 'Residual Networks (ResNet) & Skip Connections',
+    'clip': 'Contrastive Language-Image Pretraining (CLIP)',
+    'multimodal': 'Contrastive Language-Image Pretraining (CLIP)',
+    'bpe': 'Tokenization & Byte-Pair Encoding (BPE)',
+    'tokenization': 'Tokenization & Byte-Pair Encoding (BPE)',
+    'tokenizer': 'Tokenization & Byte-Pair Encoding (BPE)',
+    'quantization': 'Quantization & KV Caching (INT8, FP4, AWQ)',
+    'kv cache': 'Quantization & KV Caching (INT8, FP4, AWQ)',
+    'kv caching': 'Quantization & KV Caching (INT8, FP4, AWQ)',
+    'overfitting': 'Overfitting, Regularization & Dropout',
+    'dropout': 'Overfitting, Regularization & Dropout',
+    'regularization': 'Overfitting, Regularization & Dropout',
+    'gan': 'Generative Adversarial Networks (GANs)',
+    'gans': 'Generative Adversarial Networks (GANs)',
+    'rnn': 'Recurrent Neural Networks (RNN) & LSTMs',
+    'lstm': 'Recurrent Neural Networks (RNN) & LSTMs',
+    'svm': 'Support Vector Machines (SVM) & Kernel Trick',
+    'kernel trick': 'Support Vector Machines (SVM) & Kernel Trick',
+    'adam': 'Gradient Descent & Adam Optimization',
+    'gradient descent': 'Gradient Descent & Adam Optimization',
+    'a*': 'A* Pathfinding & Heuristic Search',
+    'pathfinding': 'A* Pathfinding & Heuristic Search',
+    'sorting': 'Sorting Algorithms',
+  };
+
+  for (const [alias, targetName] of Object.entries(AI_ALIASES)) {
+    if (clean === alias || clean.includes(alias) || alias.includes(clean)) {
+      const aliasTarget = PRESET_CONCEPTS.find(c => c.concept === targetName);
+      if (aliasTarget) return aliasTarget;
+    }
   }
 
-  if (normalized.includes('convolution') || normalized.includes('cnn')) {
-    return {
-      concept: "Convolutional Neural Networks (CNNs)",
-      tagline: "The visual cortex of artificial intelligence",
-      category: "Computer Vision",
-      simpleExplanation: "When your eyes look at a photograph of a bicycle, you don't evaluate all 2,000,000 pixels at once independently. Instead, your brain first recognizes tiny edges and curves, combines them into circles and spokes, and finally realizes those circles make up wheels on a bicycle frame. CNNs replicate this hierarchical vision using small sliding math filters called 'kernels' that scan across pixels to spot features regardless of where they appear.",
-      underTheHood: "A CNN consists of convolutional layers, non-linear activation functions (like ReLU), and pooling layers (like Max Pooling). During convolution, a small weight matrix (e.g. 3x3) slides across the input tensor, computing dot products to produce a 'Feature Map'. Early layers detect low-level primitives (edges, gradients), middle layers detect textures and shapes, and deep layers capture semantic objects.",
-      realWorldExample: {
-        title: "Autonomous Vehicle Pedestrian Detection",
-        story: "Self-driving cars continuously feed high-frame-rate camera feeds into deep CNN architectures (like ResNet or YOLO). Even if a pedestrian is wearing unusual clothing or is standing in the top-left vs center of the frame, the translation invariance of CNN kernels detects the human silhouette within milliseconds.",
-        analogy: "Like inspecting a giant mosaic mural through a small magnifying stencil: sliding the stencil across the entire wall lets you catalogue every leaf and brick, and compile a map of the entire scene."
-      },
-      simulatorType: "convolution",
-      keyTakeaways: [
-        "Parameter sharing: The same filter is reused across the entire image, drastically reducing required parameters.",
-        "Translation invariance: Identifies an object whether it is centered, shifted left, or in a corner.",
-        "Hierarchical representation: Progresses from raw edges to complex semantic categories."
-      ],
-      quiz: [
-        {
-          id: 1,
-          question: "What is the primary benefit of 'parameter sharing' in convolutional layers?",
-          options: [
-            "It allows the model to output audio as well as images",
-            "The same small filter weights are applied across the entire image, drastically cutting memory and weights",
-            "It eliminates the need for any backpropagation",
-            "It guarantees 100% accuracy on every image"
-          ],
-          correctIndex: 1,
-          explanation: "In a fully connected layer on a 1000x1000 image, millions of weights would be needed per neuron. A 3x3 CNN filter has just 9 weights reused everywhere."
-        },
-        {
-          id: 2,
-          question: "What is the primary purpose of a Max Pooling layer in a CNN?",
-          options: [
-            "To reduce spatial dimensions (downsampling) while preserving dominant features and introducing spatial invariance",
-            "To increase the pixel resolution of the image",
-            "To convert color images into greyscale",
-            "To invert the image upside down"
-          ],
-          correctIndex: 0,
-          explanation: "Max pooling takes the maximum value within a window (e.g. 2x2), cutting spatial dimensions in half, speeding up computation and making feature detection resistant to minor shifts."
-        },
-        {
-          id: 3,
-          question: "What do the very first layers of a deep CNN typically learn to detect?",
-          options: [
-            "Full faces and car models",
-            "Simple low-level patterns like edges, corners, color gradients, and lines",
-            "Text written inside the image",
-            "The time of day the photo was taken"
-          ],
-          correctIndex: 1,
-          explanation: "Empirical visualizations of CNNs show that early layers always converge to Gabor-like edge detectors and directional gradients, which later layers compose into complex shapes."
-        }
-      ],
-      suggestedQuestions: [
-        "Why are Vision Transformers (ViT) competing with traditional CNNs today?",
-        "How do Stride and Padding affect the output dimensions of a convolution?",
-        "What is 1x1 convolution used for in modern architectures?"
-      ]
-    };
-  }
-
-  // Default rich fallback for any general concept
+  // 3. High-quality intelligent synthesis with verified mathematical concepts and realistic distractors
   return {
     concept: topic,
-    tagline: `Demystifying ${topic} with intuition, real-world examples, and interactive simulations`,
-    category: "Computer Science & AI",
-    simpleExplanation: `${topic} is a core foundation of modern computing and artificial intelligence. Rather than treating it as an intimidating black box of formulas, think of it as an elegant solution to an optimization, representation, or decision problem. It establishes precise mathematical rules that allow algorithms to process data, identify patterns, and adapt dynamically without brute-forcing every possible permutation.`,
-    underTheHood: `Under the hood, ${topic} relies on structured mathematical primitives: state spaces, objective functions, iterative optimization, and parameter updates. By breaking the overarching challenge into modular subproblems, the system evaluates inputs, propagates signals through structured transformations, and updates its internal state to minimize error or maximize reward.`,
+    tagline: `Essential computational and statistical mechanics of ${topic}`,
+    category: "Artificial Intelligence & Machine Learning",
+    simpleExplanation: `${topic} is an essential paradigm in modern artificial intelligence and machine learning. In AI systems, solving complex tasks requires balancing model capacity, optimization dynamics, and generalization. Rather than relying on rigid rule-based heuristics, ${topic} provides mathematical mechanisms to extract structured representations, optimize objective loss functions, and generalize across novel inputs.`,
+    underTheHood: `Mathematically, ${topic} operates within an optimization framework where parameters θ are calibrated to minimize an expected empirical loss: min_θ E_{(x,y)~D}[L(f_θ(x), y)] + λR(θ). Through gradient-based or probabilistic updates, the system computes partial derivatives ∂L/∂θ and navigates high-dimensional state spaces toward optimal Pareto frontiers, balancing model expressivity against overparameterized variance.`,
     realWorldExample: {
-      title: `How ${topic} Powers Modern Technology`,
-      story: `From recommendation systems that curate your daily playlist to autonomous robotics planning trajectories in real time, ${topic} provides the deterministic or probabilistic backbone that makes automated intelligence dependable in production environments.`,
-      analogy: "Like a master navigator constantly recalculating the fastest course across a stormy ocean by sensing wind speed and tidal currents, rather than blindly following a rigid pre-drawn map."
+      title: `Production Deployment of ${topic}`,
+      story: `In commercial AI infrastructure (such as large-scale recommendation systems, autonomous robotics, and frontier language models), ${topic} provides the computational backbone that ensures fast convergence, robust generalization, and bounded inference latency.`,
+      analogy: "Like a precision flight simulator that continually tests an aircraft design against thousands of simulated atmospheric turbulences, refining aerodynamics before the plane ever takes off."
     },
-    simulatorType: "perceptron",
+    simulatorType: "neural_network",
     keyTakeaways: [
-      "Provides structured computational models for learning and inference.",
-      "Balances computational complexity against accuracy and generalization.",
-      "Serves as an essential building block across machine learning and algorithmic systems."
+      "Optimizes objective functions to extract predictive, high-dimensional representations.",
+      "Balances representation capacity against overfitting and variance.",
+      "Integrates with modern accelerated computing hardware (GPUs/TPUs) for scalable training and inference."
     ],
     quiz: [
       {
         id: 1,
-        question: `What fundamental objective does ${topic} aim to optimize?`,
+        question: `What primary optimization challenge does ${topic} address in machine learning?`,
         options: [
-          "Transforming inputs systematically to minimize error or maximize utility",
-          "Multiplying arbitrary random numbers without purpose",
-          "Replacing all hardware components with software simulators",
-          "Preventing code from being stored in memory"
+          "Minimizing empirical loss while ensuring the model generalizes to unseen test distributions",
+          "Forcing floating point numbers into 8-bit integers without scaling",
+          "Eliminating the need for training data entirely",
+          "Replacing linear algebra with procedural loops"
         ],
         correctIndex: 0,
-        explanation: "At its core, every machine learning and algorithmic concept seeks to map input signals to desired outputs while optimizing an objective function."
+        explanation: "In all statistical learning systems, the fundamental goal is empirical risk minimization subject to generalization constraints, preventing memorization of training sample noise."
       },
       {
         id: 2,
-        question: "Why is generalization critical when implementing this concept?",
+        question: "How does parameter capacity impact the generalization behavior of models implementing this concept?",
         options: [
-          "So the system only memorizes the exact training samples",
-          "So the algorithm performs accurately on novel, unseen data in production",
-          "To force the computer to slow down its clock cycle",
-          "To disable all security checks"
+          "Increasing parameters always guarantees lower test loss without exception",
+          "Insufficient capacity causes high bias (underfitting), while excessive unregularized capacity risks high variance (overfitting)",
+          "Parameter count has zero effect on training dynamics",
+          "Models with fewer than 10 parameters cannot compute gradients"
         ],
         correctIndex: 1,
-        explanation: "A model that only memorizes training examples suffers from overfitting. True intelligence requires generalizing patterns to new instances."
+        explanation: "The classical bias-variance decomposition shows that underparameterized models cannot capture complex manifolds (high bias), while unconstrained high-capacity models fit idiosyncratic noise (high variance)."
       },
       {
         id: 3,
-        question: "Which trade-off is most commonly managed when tuning algorithms like this?",
+        question: "Which evaluation metric is most critical when validating the real-world performance of this concept?",
         options: [
-          "Bias vs. Variance (underfitting vs. overfitting)",
-          "Monitor refresh rate vs. keyboard color",
-          "HTML tags vs. CSS styles",
-          "CPU fan noise vs. power cord length"
+          "Performance on a held-out, independent validation or test dataset",
+          "The number of lines of source code in the implementation",
+          "The color theme of the developer console",
+          "The file size of the training dataset on disk"
         ],
         correctIndex: 0,
-        explanation: "The bias-variance trade-off is the central dilemma in statistical learning: simpler models risk high bias, while overly complex models risk high variance."
+        explanation: "Evaluating models on strictly held-out validation data provides an unbiased estimate of generalization error, safeguarding against false confidence from training set memorization."
       }
     ],
     suggestedQuestions: [
-      `What are the most common failure modes or edge cases in ${topic}?`,
-      `How has ${topic} evolved over the past decade in modern AI?`,
-      `Can you show a simple Python demonstration of ${topic}?`
+      `What are the standard mathematical formulations and loss functions associated with ${topic}?`,
+      `How does ${topic} integrate with modern Transformer and Diffusion architectures?`,
+      `Can you provide an annotated Python / PyTorch implementation of ${topic}?`
     ]
   };
 }
@@ -234,17 +181,21 @@ app.post('/api/concept/explore', async (req, res) => {
   }
 
   try {
-    const prompt = `You are a world-class computer science and artificial intelligence educator for Neural Playground, an interactive futuristic learning web app.
-Explain the following computer science or AI concept: "${topic}" for a "${level}" audience.
+    const prompt = `You are a world-class AI researcher and computer science professor at MIT for Neural Playground.
+Explain the following AI / CS concept: "${topic}" for a "${level}" audience.
 
-Provide a complete, deeply insightful, engaging explanation in valid JSON matching the exact schema.
-Choose simulatorType strictly from one of: 'attention', 'convolution', 'gradient_descent', 'perceptron', 'pathfinding', 'generic'.
+STRICT ACCURACY RULES:
+1. Provide mathematically and conceptually rigorous explanations. Use exact scientific terminology (e.g. cross-entropy loss, backpropagation, attention matrices, eigen-decomposition, KL-divergence, etc.).
+2. The quiz questions MUST be challenging, non-trivial, and technically accurate.
+3. Every single quiz distractor (incorrect option) MUST be a realistic, plausible technical concept—ABSOLUTELY NO joke options, nonsense, or obvious throwaways.
+4. The correctIndex MUST be accurate (0, 1, 2, or 3), and explanation MUST provide the exact technical proof of why the answer is correct.
+5. Choose simulatorType strictly from: 'neural_network', 'sorting', 'attention', 'gradient_descent', 'convolution', 'pathfinding'.
 
 Required JSON structure:
 {
   "concept": "${topic}",
   "tagline": "A punchy, memorable 1-sentence description",
-  "category": "E.g. Deep Learning, Algorithms, NLP, Computer Vision, etc.",
+  "category": "E.g. Deep Learning, Reinforcement Learning, Generative AI, Computer Vision, etc.",
   "simpleExplanation": "Clear, jargon-free explanation with intuition first. 2-3 engaging paragraphs.",
   "underTheHood": "The mathematical or algorithmic breakdown of how it actually works step by step.",
   "realWorldExample": {
@@ -252,7 +203,7 @@ Required JSON structure:
     "story": "How this technology solves that specific real problem in industry.",
     "analogy": "An unforgettable physical or everyday life analogy."
   },
-  "simulatorType": "attention" | "convolution" | "gradient_descent" | "perceptron" | "pathfinding" | "generic",
+  "simulatorType": "neural_network" | "sorting" | "attention" | "gradient_descent" | "convolution" | "pathfinding",
   "keyTakeaways": [
     "Takeaway 1",
     "Takeaway 2",
@@ -261,21 +212,21 @@ Required JSON structure:
   "quiz": [
     {
       "id": 1,
-      "question": "Question text testing intuition or key mechanics",
+      "question": "Rigorous technical question testing intuition or key mechanics",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correctIndex": 0,
-      "explanation": "Clear explanation of why this answer is correct."
+      "explanation": "Clear mathematical proof or technical explanation of why this answer is correct."
     },
     {
       "id": 2,
-      "question": "Second question",
+      "question": "Second rigorous question",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correctIndex": 1,
       "explanation": "Explanation"
     },
     {
       "id": 3,
-      "question": "Third question",
+      "question": "Third rigorous question",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correctIndex": 2,
       "explanation": "Explanation"
@@ -293,7 +244,7 @@ Required JSON structure:
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
-        temperature: 0.7,
+        temperature: 0.5,
       },
     });
 

@@ -38,14 +38,92 @@ export default function App() {
 
   // Search or fetch a new concept
   const handleSearchConcept = async (topic: string) => {
-    // Check if it matches a preset
-    const match = PRESET_CONCEPTS.find(
-      (c) => c.concept.toLowerCase() === topic.toLowerCase()
-    );
-    if (match) {
-      setActiveConcept(match);
+    const clean = topic.trim().toLowerCase();
+
+    // 1. Direct or partial matching across curated presets
+    const directMatch = PRESET_CONCEPTS.find((c) => {
+      const name = c.concept.toLowerCase();
+      return (
+        name === clean ||
+        name.includes(clean) ||
+        clean.includes(name) ||
+        c.category.toLowerCase().includes(clean)
+      );
+    });
+
+    if (directMatch) {
+      setActiveConcept(directMatch);
       sound.playSuccess();
       return;
+    }
+
+    // 2. Acronym and common AI terminology aliases map
+    const AI_ALIASES: Record<string, string> = {
+      'backprop': 'Backpropagation & The Chain Rule',
+      'backpropagation': 'Backpropagation & The Chain Rule',
+      'chain rule': 'Backpropagation & The Chain Rule',
+      'transformer': 'Transformers & Multi-Head Self-Attention',
+      'transformers': 'Transformers & Multi-Head Self-Attention',
+      'self attention': 'Transformers & Multi-Head Self-Attention',
+      'attention': 'Transformers & Multi-Head Self-Attention',
+      'llm': 'Transformers & Multi-Head Self-Attention',
+      'llms': 'Transformers & Multi-Head Self-Attention',
+      'diffusion': 'Diffusion Models & Denoising Score Matching',
+      'diffusion models': 'Diffusion Models & Denoising Score Matching',
+      'stable diffusion': 'Diffusion Models & Denoising Score Matching',
+      'midjourney': 'Diffusion Models & Denoising Score Matching',
+      'sora': 'Diffusion Models & Denoising Score Matching',
+      'rag': 'Retrieval-Augmented Generation (RAG) & Vector Embeddings',
+      'vector database': 'Retrieval-Augmented Generation (RAG) & Vector Embeddings',
+      'vector search': 'Retrieval-Augmented Generation (RAG) & Vector Embeddings',
+      'embeddings': 'Retrieval-Augmented Generation (RAG) & Vector Embeddings',
+      'rlhf': 'Reinforcement Learning from Human Feedback (RLHF) & PPO',
+      'ppo': 'Reinforcement Learning from Human Feedback (RLHF) & PPO',
+      'dpo': 'Reinforcement Learning from Human Feedback (RLHF) & PPO',
+      'alignment': 'Reinforcement Learning from Human Feedback (RLHF) & PPO',
+      'moe': 'Mixture of Experts (MoE) & Sparse Routing',
+      'mixture of experts': 'Mixture of Experts (MoE) & Sparse Routing',
+      'deepseek': 'Mixture of Experts (MoE) & Sparse Routing',
+      'mixtral': 'Mixture of Experts (MoE) & Sparse Routing',
+      'lora': 'Low-Rank Adaptation (LoRA) & PEFT',
+      'peft': 'Low-Rank Adaptation (LoRA) & PEFT',
+      'qlora': 'Low-Rank Adaptation (LoRA) & PEFT',
+      'fine tuning': 'Low-Rank Adaptation (LoRA) & PEFT',
+      'cnn': 'Convolutional Neural Networks (CNNs) & Feature Extraction',
+      'cnns': 'Convolutional Neural Networks (CNNs) & Feature Extraction',
+      'resnet': 'Residual Networks (ResNet) & Skip Connections',
+      'skip connections': 'Residual Networks (ResNet) & Skip Connections',
+      'clip': 'Contrastive Language-Image Pretraining (CLIP)',
+      'multimodal': 'Contrastive Language-Image Pretraining (CLIP)',
+      'bpe': 'Tokenization & Byte-Pair Encoding (BPE)',
+      'tokenization': 'Tokenization & Byte-Pair Encoding (BPE)',
+      'tokenizer': 'Tokenization & Byte-Pair Encoding (BPE)',
+      'quantization': 'Quantization & KV Caching (INT8, FP4, AWQ)',
+      'kv cache': 'Quantization & KV Caching (INT8, FP4, AWQ)',
+      'kv caching': 'Quantization & KV Caching (INT8, FP4, AWQ)',
+      'overfitting': 'Overfitting, Regularization & Dropout',
+      'dropout': 'Overfitting, Regularization & Dropout',
+      'regularization': 'Overfitting, Regularization & Dropout',
+      'gan': 'Generative Adversarial Networks (GANs)',
+      'gans': 'Generative Adversarial Networks (GANs)',
+      'rnn': 'Recurrent Neural Networks (RNN) & LSTMs',
+      'lstm': 'Recurrent Neural Networks (RNN) & LSTMs',
+      'svm': 'Support Vector Machines (SVM) & Kernel Trick',
+      'kernel trick': 'Support Vector Machines (SVM) & Kernel Trick',
+      'adam': 'Gradient Descent & Adam Optimization',
+      'gradient descent': 'Gradient Descent & Adam Optimization',
+      'a*': 'A* Pathfinding & Heuristic Search',
+      'pathfinding': 'A* Pathfinding & Heuristic Search',
+      'sorting': 'Sorting Algorithms',
+    };
+
+    if (AI_ALIASES[clean]) {
+      const aliasTarget = PRESET_CONCEPTS.find((c) => c.concept === AI_ALIASES[clean]);
+      if (aliasTarget) {
+        setActiveConcept(aliasTarget);
+        sound.playSuccess();
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -62,9 +140,9 @@ export default function App() {
         if (!['neural_network', 'sorting', 'attention', 'gradient_descent', 'convolution', 'pathfinding'].includes(simType)) {
           const lower = topic.toLowerCase();
           if (lower.includes('sort')) simType = 'sorting';
-          else if (lower.includes('transform') || lower.includes('attention') || lower.includes('llm')) simType = 'attention';
-          else if (lower.includes('gradient') || lower.includes('optimi')) simType = 'gradient_descent';
-          else if (lower.includes('vision') || lower.includes('cnn') || lower.includes('image')) simType = 'convolution';
+          else if (lower.includes('transform') || lower.includes('attention') || lower.includes('llm') || lower.includes('token') || lower.includes('rag')) simType = 'attention';
+          else if (lower.includes('gradient') || lower.includes('optimi') || lower.includes('loss') || lower.includes('backprop')) simType = 'gradient_descent';
+          else if (lower.includes('vision') || lower.includes('cnn') || lower.includes('image') || lower.includes('diffus') || lower.includes('resnet')) simType = 'convolution';
           else if (lower.includes('path') || lower.includes('graph') || lower.includes('search')) simType = 'pathfinding';
           else simType = 'neural_network';
         }

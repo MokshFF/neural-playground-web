@@ -58,12 +58,18 @@ export const ConceptExplorer: React.FC<Props> = ({
   };
 
   const quickPicks = [
-    "Sorting Algorithms",
-    "Neural Networks & Perceptrons",
-    "Transformers & Self-Attention",
+    "Transformers",
+    "Diffusion Models",
+    "RAG & Vector Embeddings",
+    "Backpropagation",
+    "RLHF & PPO",
+    "Mixture of Experts (MoE)",
+    "LoRA Fine-Tuning",
+    "Quantization & KV Cache",
+    "CNNs & Vision",
     "Gradient Descent",
-    "A* Pathfinding",
-    "Convolutional Neural Networks",
+    "GANs",
+    "Sorting Algorithms",
   ];
 
   const fontClass =
